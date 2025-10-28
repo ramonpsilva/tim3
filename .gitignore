@@ -35,3 +35,6 @@ wheels/
 *.tmp
 *.bak
 *.log
+
+# Test outputs
+test_output.html

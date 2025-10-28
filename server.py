@@ -37,10 +37,11 @@ class TableViewerHandler(SimpleHTTPRequestHandler):
             file_item = form['file']
             
             try:
-                # Save uploaded file temporarily
-                temp_path = '/tmp/uploaded.ods'
-                with open(temp_path, 'wb') as f:
-                    f.write(file_item.file.read())
+                # Save uploaded file temporarily using a secure method
+                import tempfile
+                with tempfile.NamedTemporaryFile(mode='wb', suffix='.ods', delete=False) as temp_file:
+                    temp_path = temp_file.name
+                    temp_file.write(file_item.file.read())
                 
                 # Convert ODS to table data
                 tables_data = self.convert_ods_to_data(temp_path)
@@ -69,10 +70,13 @@ class TableViewerHandler(SimpleHTTPRequestHandler):
             for row in sheet.getElementsByType(table.TableRow):
                 cells_data = []
                 for cell in row.getElementsByType(table.TableCell):
-                    # Get cell text
+                    # Get cell text properly
                     cell_text = ''
                     for p in cell.getElementsByType(text.P):
-                        cell_text += str(p)
+                        # Get text content from paragraph
+                        for node in p.childNodes:
+                            if hasattr(node, 'data'):
+                                cell_text += node.data
                     cells_data.append(cell_text)
                 
                 if any(cells_data):  # Only add non-empty rows

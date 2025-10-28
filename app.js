@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Display all tables
                 tables.forEach((table, index) => {
-                    if (index > 0) {
+                    if (index > 0 || tables.length > 1) {
                         const title = document.createElement('h2');
                         title.className = 'table-title';
                         title.textContent = `Table ${index + 1}`;
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Display all tables
                 tables.forEach((tableData, index) => {
-                    if (index > 0) {
+                    if (index > 0 || tables.length > 1) {
                         const title = document.createElement('h2');
                         title.className = 'table-title';
                         title.textContent = `Table ${index + 1}`;

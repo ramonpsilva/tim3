@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table Viewer Tests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .test-case {
+            margin: 20px 0;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-case.pass {
+            border-color: #4CAF50;
+            background-color: #f1f8f4;
+        }
+        .test-case.fail {
+            border-color: #f44336;
+            background-color: #ffebee;
+        }
+        .test-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .test-result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: white;
+            border-radius: 3px;
+        }
+        table {
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Table Viewer - Markdown Parser Tests</h1>
+    <div id="testResults"></div>
+
+    <script>
+        // Copy the parseMarkdownTables function from app.js
+        function parseMarkdownTables(markdown) {
+            const tables = [];
+            const lines = markdown.split('\n');
+            let i = 0;
+            
+            while (i < lines.length) {
+                const line = lines[i].trim();
+                
+                // Check if this line looks like a table row (contains |)
+                if (line.startsWith('|') && line.endsWith('|')) {
+                    const tableData = [];
+                    
+                    // Parse the header row
+                    const headerCells = line.split('|').map(cell => cell.trim()).filter(cell => cell);
+                    tableData.push(headerCells);
+                    
+                    i++;
+                    
+                    // Check for separator row
+                    if (i < lines.length) {
+                        const separatorLine = lines[i].trim();
+                        if (separatorLine.match(/^\|[\s\-:|]+\|$/)) {
+                            i++; // Skip separator row
+                            
+                            // Parse data rows
+                            while (i < lines.length) {
+                                const dataLine = lines[i].trim();
+                                if (dataLine.startsWith('|') && dataLine.endsWith('|')) {
+                                    const dataCells = dataLine.split('|').map(cell => cell.trim()).filter(cell => cell);
+                                    tableData.push(dataCells);
+                                    i++;
+                                } else {
+                                    break;
+                                }
+                            }
+                            
+                            if (tableData.length > 1) {
+                                tables.push(tableData);
+                            }
+                        } else {
+                            i++;
+                        }
+                    } else {
+                        i++;
+                    }
+                } else {
+                    i++;
+                }
+            }
+            
+            return tables;
+        }
+
+        function createHTMLTable(data) {
+            const table = document.createElement('table');
+            
+            // Create header
+            if (data.length > 0) {
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                
+                data[0].forEach(cellText => {
+                    const th = document.createElement('th');
+                    th.textContent = cellText;
+                    headerRow.appendChild(th);
+                });
+                
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+            }
+            
+            // Create body
+            if (data.length > 1) {
+                const tbody = document.createElement('tbody');
+                
+                for (let i = 1; i < data.length; i++) {
+                    const row = document.createElement('tr');
+                    
+                    data[i].forEach(cellText => {
+                        const td = document.createElement('td');
+                        td.textContent = cellText;
+                        row.appendChild(td);
+                    });
+                    
+                    tbody.appendChild(row);
+                }
+                
+                table.appendChild(tbody);
+            }
+            
+            return table;
+        }
+
+        // Test cases
+        const tests = [
+            {
+                name: 'Simple table with 2 columns and 2 rows',
+                markdown: `| Name | Age |
+|------|-----|
+| John | 25 |
+| Jane | 30 |`,
+                expectedTables: 1,
+                expectedHeaders: ['Name', 'Age'],
+                expectedRows: 2
+            },
+            {
+                name: 'Table with multiple columns',
+                markdown: `| A | B | C | D | E |
+|---|---|---|---|---|
+| 1 | 2 | 3 | 4 | 5 |
+| 6 | 7 | 8 | 9 | 10 |`,
+                expectedTables: 1,
+                expectedHeaders: ['A', 'B', 'C', 'D', 'E'],
+                expectedRows: 2
+            },
+            {
+                name: 'Multiple tables in one markdown',
+                markdown: `| Table 1 | Data |
+|---------|------|
+| A | 1 |
+
+| Table 2 | Info |
+|---------|------|
+| B | 2 |`,
+                expectedTables: 2,
+                expectedHeaders: ['Table 1', 'Data'],
+                expectedRows: 1
+            },
+            {
+                name: 'Table with text before and after',
+                markdown: `# Heading
+
+Some text here.
+
+| Column | Value |
+|--------|-------|
+| Test | 123 |
+
+More text after.`,
+                expectedTables: 1,
+                expectedHeaders: ['Column', 'Value'],
+                expectedRows: 1
+            }
+        ];
+
+        // Run tests
+        const resultsDiv = document.getElementById('testResults');
+        let passCount = 0;
+        let failCount = 0;
+
+        tests.forEach((test, index) => {
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-case';
+            
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'test-title';
+            titleDiv.textContent = `Test ${index + 1}: ${test.name}`;
+            testDiv.appendChild(titleDiv);
+
+            try {
+                const tables = parseMarkdownTables(test.markdown);
+                
+                let passed = true;
+                let message = '';
+
+                if (tables.length !== test.expectedTables) {
+                    passed = false;
+                    message += `Expected ${test.expectedTables} tables, got ${tables.length}. `;
+                }
+
+                if (tables.length > 0) {
+                    const headers = tables[0][0];
+                    if (JSON.stringify(headers) !== JSON.stringify(test.expectedHeaders)) {
+                        passed = false;
+                        message += `Expected headers ${JSON.stringify(test.expectedHeaders)}, got ${JSON.stringify(headers)}. `;
+                    }
+
+                    const dataRows = tables[0].length - 1;
+                    if (dataRows !== test.expectedRows) {
+                        passed = false;
+                        message += `Expected ${test.expectedRows} data rows, got ${dataRows}. `;
+                    }
+                }
+
+                if (passed) {
+                    testDiv.classList.add('pass');
+                    message = '✓ PASSED';
+                    passCount++;
+                } else {
+                    testDiv.classList.add('fail');
+                    message = '✗ FAILED: ' + message;
+                    failCount++;
+                }
+
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'test-result';
+                resultDiv.textContent = message;
+                testDiv.appendChild(resultDiv);
+
+                // Show the rendered table
+                if (tables.length > 0) {
+                    const tableDiv = document.createElement('div');
+                    tableDiv.style.marginTop = '10px';
+                    tableDiv.appendChild(createHTMLTable(tables[0]));
+                    testDiv.appendChild(tableDiv);
+                }
+
+            } catch (error) {
+                testDiv.classList.add('fail');
+                failCount++;
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'test-result';
+                resultDiv.textContent = '✗ ERROR: ' + error.message;
+                testDiv.appendChild(resultDiv);
+            }
+
+            resultsDiv.appendChild(testDiv);
+        });
+
+        // Summary
+        const summaryDiv = document.createElement('div');
+        summaryDiv.style.marginTop = '20px';
+        summaryDiv.style.padding = '15px';
+        summaryDiv.style.backgroundColor = passCount === tests.length ? '#4CAF50' : '#ff9800';
+        summaryDiv.style.color = 'white';
+        summaryDiv.style.borderRadius = '5px';
+        summaryDiv.style.fontWeight = 'bold';
+        summaryDiv.textContent = `Test Summary: ${passCount} passed, ${failCount} failed out of ${tests.length} tests`;
+        resultsDiv.insertBefore(summaryDiv, resultsDiv.firstChild);
+    </script>
+</body>
+</html>
